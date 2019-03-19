@@ -66,35 +66,6 @@ public class MarketDataService implements MessageListener<String> {
         }
     }
 
-    /*   Not threadsafe
-    public void updateCoinPrice(String symbol, String value, String volume) {
-        CoinPriceDto current = coinPriceMap.get(symbol);
-        CoinPriceDto newCoinPrice = new CoinPriceDto(); // copy all fields
-        newCoinPrice.setLastPrice(new BigDecimal(value));
-        newCoinPrice.setVolume(new BigDecimal(volume));
-        coinPriceMap.put(symbol, newCoinPrice);
-    }
-     */
-    /*
-    //ETH
-    public String getPrice(String coinSymbol) {
-        CoinPriceDto coinPrice = coinPriceMap.get(coinSymbol);
-        try {
-            // If there is no price in local cache get data from db
-            if (coinPrice == null) {
-                final CoinPrice last = coinPriceDao.findFirst1BySymbolOrderByAddTimeDesc(coinSymbol);
-                System.out.println("TRYING DATABASE last " + last);
-                return last.getLastPrice().toPlainString();
-            } else {
-                // returns json object
-                return mapper.writer().writeValueAsString(coinPrice.getLastPrice());
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return "";
-    }  */
-
     // Get all prices of a symbol
     public Page<CoinPriceDto> getPrice(String coinSymbol, Pageable pageable) {
         Page<CoinPrice> coinPricePage = coinPriceDao.findFirst100BySymbolOrderByAddTimeDesc(coinSymbol, pageable);
@@ -111,7 +82,6 @@ public class MarketDataService implements MessageListener<String> {
         log.info("TRYING get last prices from mao" + coinPriceMap);
         final List<CoinPrice> coinPriceList = coinPriceDao.findLastPrices();
         return coinPriceList.stream().map(coinPrice -> toCoinPriceDto(coinPrice)).collect(Collectors.toList());
-
     }
 
     private CoinPriceDto toCoinPriceDto(CoinPrice c) {
