@@ -3,13 +3,13 @@ package elif.marketdata.common;
 import java.math.BigDecimal;
 import java.util.Objects;
 
-
 public class CoinPriceDto {
     private String symbol;
     private BigDecimal askPrice;
     private BigDecimal bidPrice;
     private BigDecimal lastPrice;
     private BigDecimal volume;
+    private long addTime;
 
     protected CoinPriceDto() {
     }
@@ -56,6 +56,14 @@ public class CoinPriceDto {
 
     public void setLastPrice(BigDecimal lastPrice) {
         this.lastPrice = lastPrice;
+    }
+
+    public long getAddTime() {
+        return addTime;
+    }
+
+    public void setAddTime(long addTime) {
+        this.addTime = addTime;
     }
 
     @Override

@@ -39,8 +39,8 @@ public class MarketDataController {
     }
 
     @GetMapping(value = "/price/{symbol}")
-    public ResponseEntity<Page<CoinPriceDto>> getCoinPrice(@PathVariable String symbol, Pageable pageable) {
-        Page<CoinPriceDto> coinPriceDtos = marketDataService.getPrice(symbol, pageable);
+    public ResponseEntity<List<CoinPriceDto>> getCoinPrice(@PathVariable String symbol) {
+        List<CoinPriceDto> coinPriceDtos = marketDataService.getPrice(symbol);
         return ResponseEntity.ok(coinPriceDtos);
     }
 

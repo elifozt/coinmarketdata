@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hazelcast.core.Message;
 import com.hazelcast.core.MessageListener;
 import elif.marketdata.api.MarketDataApplication;
+import elif.marketdata.api.websocket.WebSocketHandler;
 import elif.marketdata.common.CoinPriceDto;
 import elif.marketdata.common.CoinPriceSet;
 import elif.marketdata.common.HazelcastClientService;
@@ -31,6 +32,8 @@ public class MarketDataService implements MessageListener<String> {
     HazelcastClientService hc;
     @Autowired
     CoinPriceDao coinPriceDao;
+    @Autowired
+    WebSocketHandler webSocketHandler;
 
     private static final Logger log = LoggerFactory.getLogger(MarketDataApplication.class);
 
@@ -52,6 +55,7 @@ public class MarketDataService implements MessageListener<String> {
         String cpsString = m.getMessageObject();
         // new coinPrice is received
         CoinPriceSet cps = null;
+
         try {
             // read json string into CoinPriceSet object
             cps = mapper.readValue(cpsString, CoinPriceSet.class);
@@ -59,22 +63,23 @@ public class MarketDataService implements MessageListener<String> {
                 // put the prices on local cache - map
                 coinPriceMap.put(coinPrice.getSymbol(), coinPrice);
             });
+            final String arrayStr = mapper.writer().writeValueAsString(cps.getCoinPrices());
             // create websocket json message
-            // websocketHandler.sendToEveryone (json)
+            webSocketHandler.sendToEveryone(arrayStr);
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
     // Get all prices of a symbol
-    public Page<CoinPriceDto> getPrice(String coinSymbol, Pageable pageable) {
-        Page<CoinPrice> coinPricePage = coinPriceDao.findFirst100BySymbolOrderByAddTimeDesc(coinSymbol, pageable);
+    public List<CoinPriceDto> getPrice(String coinSymbol) {
+        List<CoinPrice> coinPricePage = coinPriceDao.findFirst100BySymbolOrderByAddTimeDesc(coinSymbol);
         log.info("TRYING to get prices for " + coinSymbol + ":" + coinPricePage);
-        List<CoinPriceDto> coinPriceDtoList = coinPricePage.getContent()
+        List<CoinPriceDto> coinPriceDtoList = coinPricePage
                 .stream()
                 .map(coinPrice -> toCoinPriceDto(coinPrice))
                 .collect(Collectors.toList());
-        return new PageImpl<CoinPriceDto>(coinPriceDtoList, pageable, coinPricePage.getTotalPages());
+        return coinPriceDtoList;
     }
 
     // Get last prices of marketdate
@@ -90,6 +95,7 @@ public class MarketDataService implements MessageListener<String> {
         d.setBidPrice(c.getBidPrice());
         d.setLastPrice(c.getLastPrice());
         d.setVolume(c.getVolume());
+        d.setAddTime(c.getAddTime());
         return d;
     }
 

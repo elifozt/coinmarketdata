@@ -20,10 +20,9 @@ public interface CoinPriceDao extends PagingAndSortingRepository<CoinPrice, Long
      * Lookup a Page of Tours associated with a TourPackage
      *
      * @param symbol
-     * @param pageable details for finding the correct page.
      * @return A page of coin prices if found, empty otherwise.
      */
-    Page<CoinPrice> findFirst100BySymbolOrderByAddTimeDesc(String symbol, Pageable pageable);
+    List<CoinPrice> findFirst100BySymbolOrderByAddTimeDesc(String symbol);
 
 
     CoinPrice findFirst1BySymbolOrderByAddTimeDesc(String symbol);

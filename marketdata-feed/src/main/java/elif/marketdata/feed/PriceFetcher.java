@@ -57,7 +57,10 @@ public class PriceFetcher {
     private void saveCoin(JsonNode coin) {
         String symbolUSDC = coin.get("symbol").asText();
         if (symbolUSDC.equals("BTCUSDC") || symbolUSDC.equals("ETHUSDC") || symbolUSDC.equals("LTCUSDC") ||
-                symbolUSDC.equals("XRPUSDC")) {
+                symbolUSDC.equals("XRPUSDC") || symbolUSDC.equals("BNBUSDC")
+                || symbolUSDC.equals("EOSUSDC") || symbolUSDC.equals("XLMUSDC")
+                || symbolUSDC.equals("TRXUSDC")|| symbolUSDC.equals("WAVESUSDC")|| symbolUSDC.equals("BCHABCUSDC")
+                || symbolUSDC.equals("BCHSVUSDC")|| symbolUSDC.equals("ZECUSDC")) {
             String symbol = symbolUSDC.substring(0, symbolUSDC.length() - 4);
             // cnstruct map
             CoinPriceDto coinPrice = saveCoinDto(coin, symbol);
