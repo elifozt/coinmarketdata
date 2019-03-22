@@ -22,7 +22,7 @@ public interface CoinPriceDao extends PagingAndSortingRepository<CoinPrice, Long
      * @param symbol
      * @return A page of coin prices if found, empty otherwise.
      */
-    List<CoinPrice> findFirst100BySymbolOrderByAddTimeDesc(String symbol);
+    List<CoinPrice> findFirst300BySymbolOrderByAddTimeDesc(String symbol);
 
 
     CoinPrice findFirst1BySymbolOrderByAddTimeDesc(String symbol);

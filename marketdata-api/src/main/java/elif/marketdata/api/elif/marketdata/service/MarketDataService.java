@@ -73,7 +73,7 @@ public class MarketDataService implements MessageListener<String> {
 
     // Get all prices of a symbol
     public List<CoinPriceDto> getPrice(String coinSymbol) {
-        List<CoinPrice> coinPricePage = coinPriceDao.findFirst100BySymbolOrderByAddTimeDesc(coinSymbol);
+        List<CoinPrice> coinPricePage = coinPriceDao.findFirst300BySymbolOrderByAddTimeDesc(coinSymbol);
         log.info("TRYING to get prices for " + coinSymbol + ":" + coinPricePage);
         List<CoinPriceDto> coinPriceDtoList = coinPricePage
                 .stream()
