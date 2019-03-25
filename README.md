@@ -30,3 +30,9 @@ To Do:
   1) Write JUnit tests
   2) Create weekly, monthly and annual coin price charts
   3) Add twitter feeds for each coin
+
+Screenshots
+ 
+![CoinMarket Data](https://raw.githubusercontent.com/elifozt/coinmarketdata-angular/master/src/assets/img/coinprices.png)
+![CoinMarket Data](https://raw.githubusercontent.com/elifozt/coinmarketdata-angular/master/src/assets/img/coinpriceschanging.png)
+![BTC Last Hour Price Chart](https://raw.githubusercontent.com/elifozt/coinmarketdata-angular/master/src/assets/img/BTCChart.png)
