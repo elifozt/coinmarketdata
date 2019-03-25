@@ -3,7 +3,8 @@ This is a simple cryptocurrency market data application. It shows the current US
 There are 3 modules.
 
     1) marketdata-common: Shared classes such as JPA entities, repositories, Hazelcast Client and utilities
-    2) marketdata-feed: SpringBoot app. Market data is fetched from Binance public API and stored in the MySQL database every 5 seconds.
+    2) marketdata-feed: SpringBoot app. Market data is fetched from Binance public API and stored in the
+       MySQL database every 5 seconds.
     3) marketdata-api: SpringBoot app. Http API and Websocket server that Angular app communicates with.
 
 Hazelcast is used to broadcast price data to API services so that API services can locally cache the coin prices.
