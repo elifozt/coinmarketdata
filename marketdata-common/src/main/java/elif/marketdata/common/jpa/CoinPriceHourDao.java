@@ -9,5 +9,5 @@ import java.util.List;
 @Transactional
 public interface CoinPriceHourDao extends CrudRepository<CoinPriceHour, Long>, JpaSpecificationExecutor {
     // Get weekly prices
-    List<CoinPriceHour> findFirst200BySymbolOrderByAddTimeDesc(String symbol);
+    List<CoinPriceBase> findFirst200BySymbolOrderByAddTimeDesc(String symbol);
 }

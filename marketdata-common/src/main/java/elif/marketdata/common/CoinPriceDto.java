@@ -85,7 +85,16 @@ public class CoinPriceDto {
     public void setTime(long time) {
         this.time = time;
     }
-
+    // Bu olmus mu sor ????
+    public static CoinPriceDto toCoinPriceDto(CoinPriceBase c) {
+        CoinPriceDto d = new CoinPriceDto(c.getSymbol());
+        d.setAskPrice(c.getAskPrice());
+        d.setBidPrice(c.getBidPrice());
+        d.setLastPrice(c.getLastPrice());
+        d.setVolume(c.getVolume());
+        d.setAddTime(c.getAddTime());
+        return d;
+    }
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

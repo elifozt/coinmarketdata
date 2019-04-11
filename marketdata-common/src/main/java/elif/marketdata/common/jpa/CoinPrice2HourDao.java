@@ -10,5 +10,5 @@ import java.util.List;
 public interface CoinPrice2HourDao extends CrudRepository<CoinPrice2Hour, Long>, JpaSpecificationExecutor {
 
     // Get monthly prices
-    List<CoinPrice2Hour> findFirst360BySymbolOrderByAddTimeDesc(String symbol);
+    List<CoinPriceBase> findFirst360BySymbolOrderByAddTimeDesc(String symbol);
 }

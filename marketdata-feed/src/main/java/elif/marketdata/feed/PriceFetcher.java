@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
 import javax.annotation.PostConstruct;
 import java.math.BigDecimal;
 import java.net.URL;
@@ -46,18 +47,42 @@ public class PriceFetcher {
     // is this thread-safe? yes. I read the documentation.
     private final ObjectMapper mapper = new ObjectMapper();
 
-    private CoinPriceDto createCoinDto(JsonNode coin, String symbol) {
-        CoinPriceDto coinPrice = new CoinPriceDto(symbol);
-        coinPrice.setAskPrice(new BigDecimal(coin.get("askPrice").asText()));
-        coinPrice.setBidPrice(new BigDecimal(coin.get("bidPrice").asText()));
-        coinPrice.setLastPrice(new BigDecimal(coin.get("lastPrice").asText()));
-        coinPrice.setVolume(new BigDecimal(coin.get("volume").asText()));
-//        log.info("Coin is saved to in map db");
+    private CoinPriceDto createCoinDto(JsonNode jsonCoin, String symbol) {
+        CoinPriceDto coinPriceDto = new CoinPriceDto(symbol);
+        coinPriceDto.setAskPrice(new BigDecimal(jsonCoin.get("askPrice").asText()));
+        coinPriceDto.setBidPrice(new BigDecimal(jsonCoin.get("bidPrice").asText()));
+        coinPriceDto.setLastPrice(new BigDecimal(jsonCoin.get("lastPrice").asText()));
+        coinPriceDto.setVolume(new BigDecimal(jsonCoin.get("volume").asText()));
+        return coinPriceDto;
+    }
+
+    private CoinPriceBase createCoinEntity(CoinPriceDto coinPriceDto, long time, String entityType) {
+        CoinPriceBase coinPrice;
+        switch (entityType) {
+            case "4minute":
+                coinPrice = new CoinPrice4Minute(coinPriceDto.getSymbol());
+                break;
+            case "hour":
+                coinPrice = new CoinPriceHour(coinPriceDto.getSymbol());
+                break;
+            case "2hour":
+                coinPrice = new CoinPrice2Hour(coinPriceDto.getSymbol());
+                break;
+            case "day":
+                coinPrice = new CoinPriceDay(coinPriceDto.getSymbol());
+                break;
+            default:
+                coinPrice = new CoinPriceBase();
+        }
+        coinPrice.setAskPrice(coinPriceDto.getAskPrice());
+        coinPrice.setBidPrice(coinPriceDto.getBidPrice());
+        coinPrice.setLastPrice(coinPriceDto.getLastPrice());
+        coinPrice.setVolume(coinPriceDto.getVolume());
+        coinPrice.setTime(time);
         return coinPrice;
     }
 
     private void saveCoinToDB(CoinPriceDto coinPrice) {
-        // get the latest minute record from the map  ???
         saveCoinTo4MinTable(coinPrice);
         saveCoinToHourTable(coinPrice);
         saveCoinTo2HourTable(coinPrice);
@@ -68,111 +93,100 @@ public class PriceFetcher {
         return coinLastPriceTimeMap.getOrDefault(coinPrice.getSymbol(), new long[4]);
     }
 
-    private void saveCoinTo4MinTable(CoinPriceDto coinPrice) {
+    private void publishHistoricPricesToHZC(String key, List<CoinPriceBase> coinPrices) {
+        List<CoinPriceDto> list = new ArrayList<>();
+        coinPrices.forEach(price -> {
+            list.add(new CoinPriceDto(price));
+        });
+        String jsonStr = "";
+        try {
+            jsonStr = mapper.writer().writeValueAsString(list);
+        } catch (JsonProcessingException e) {
+            e.printStackTrace();
+        }
+        Map<String, String> hzCoinChartMap = hc.getCoinChartDataMap();
+        hzCoinChartMap.put(key, jsonStr);
+    }
+
+    private void saveCoinTo4MinTable(CoinPriceDto coinPriceDto) {
         long now = Instant.now().truncatedTo(ChronoUnit.MINUTES).toEpochMilli();
         // get the latest minute record from the map  ???
-        long[] lastPriceTimesForCoin = getOrCreateLastTimes(coinPrice);
+        long[] lastPriceTimesForCoin = getOrCreateLastTimes(coinPriceDto);
         long last4Min = lastPriceTimesForCoin[0];
-        if (last4Min == 0 ||
-                now >= Instant.ofEpochMilli(last4Min).plus(4, ChronoUnit.MINUTES).toEpochMilli()) {
-            CoinPrice4Minute coinPrice4MinEntity = new CoinPrice4Minute(coinPrice.getSymbol());
-            coinPrice4MinEntity.setAskPrice(coinPrice.getAskPrice());
-            coinPrice4MinEntity.setBidPrice(coinPrice.getBidPrice());
-            coinPrice4MinEntity.setLastPrice(coinPrice.getLastPrice());
-            coinPrice4MinEntity.setVolume(coinPrice.getVolume());
-            coinPrice4MinEntity.setTime(now);
-            coinPrice4MinuteDao.save(coinPrice4MinEntity);
+        if (now >= Instant.ofEpochMilli(last4Min).plus(4, ChronoUnit.MINUTES).toEpochMilli()) {
+            // save coin to 4min table
+            coinPrice4MinuteDao.save((CoinPrice4Minute) createCoinEntity(coinPriceDto, now, "4minute"));
+            // update last price
             lastPriceTimesForCoin[0] = now;
             // update cache for the last 4 min time
-            coinLastPriceTimeMap.put(coinPrice.getSymbol(), lastPriceTimesForCoin);
-            String key = coinPrice.getSymbol() + "_daily";
-            List<CoinPrice4Minute> coinPrice4Minutes = coinPrice4MinuteDao.findFirst360BySymbolOrderByAddTimeDesc(coinPrice.getSymbol());
-            // go to db, select 360 records, create List<CP>, convert to JsonNode
-            List<CoinPriceDto> list = new ArrayList<>();
-            coinPrice4Minutes.forEach(price -> {
-                list.add(new CoinPriceDto(price));
-            } );
-            String jsonStr ="";
-            try {
-                jsonStr = mapper.writer().writeValueAsString(list);
-            } catch (JsonProcessingException e) {
-                e.printStackTrace();
-            }
-            // JsonNode jsonNode =   null;
-            // String value = jsonNode.toString();
-            Map<String, String> hzCoinChartMap = hc.getCoinChartDataMap();
-            hzCoinChartMap.put(key, jsonStr);
-
-            System.out.println("last 4 min price added to db and cache. Time for " + coinPrice.getSymbol() + " :" + now);
+            coinLastPriceTimeMap.put(coinPriceDto.getSymbol(), lastPriceTimesForCoin);
+            // publish last daily prices in hzc map
+            String key = coinPriceDto.getSymbol() + "_daily";
+            // go to db, select 360 records,
+            List<CoinPriceBase> coinPrice4Minutes = coinPrice4MinuteDao.findFirst360BySymbolOrderByAddTimeDesc(coinPriceDto.getSymbol());
+            // create List<CP>, convert to JSONString and put in HZC
+            publishHistoricPricesToHZC(key, coinPrice4Minutes);
+            System.out.println("last 4 min price added to db and cache. Time for " + coinPriceDto.getSymbol() + " :" + now);
         }
     }
 
-    private void saveCoinToHourTable(CoinPriceDto coinPrice) {
+    private void saveCoinToHourTable(CoinPriceDto coinPriceDto) {
         long now = Instant.now().truncatedTo(ChronoUnit.HOURS).toEpochMilli();
         // get the latest minute record from the map  ???
-        long[] lastPriceTimesForCoin = getOrCreateLastTimes(coinPrice);
+        long[] lastPriceTimesForCoin = getOrCreateLastTimes(coinPriceDto);
         long lastHour = lastPriceTimesForCoin[1];
         if (now >= Instant.ofEpochMilli(lastHour).plus(1, ChronoUnit.HOURS).toEpochMilli()) {
-            CoinPriceHour coinPriceHourEntity = new CoinPriceHour(coinPrice.getSymbol());
-            coinPriceHourEntity.setAskPrice(coinPrice.getAskPrice());
-            coinPriceHourEntity.setBidPrice(coinPrice.getBidPrice());
-            coinPriceHourEntity.setLastPrice(coinPrice.getLastPrice());
-            coinPriceHourEntity.setVolume(coinPrice.getVolume());
-            coinPriceHourEntity.setTime(now);
-            coinPriceHourDao.save(coinPriceHourEntity);
+            coinPriceHourDao.save((CoinPriceHour) createCoinEntity(coinPriceDto, now, "hour"));
             lastPriceTimesForCoin[1] = now;
             // update cache for the last hour price
-            coinLastPriceTimeMap.put(coinPrice.getSymbol(), lastPriceTimesForCoin);
-            System.out.println("last hour price added to db and cache. Time for " + coinPrice.getSymbol() + " :" + now);
+            coinLastPriceTimeMap.put(coinPriceDto.getSymbol(), lastPriceTimesForCoin);
+            String key = coinPriceDto.getSymbol() + "_weekly";
+            List<CoinPriceBase> coinPriceHours = coinPriceHourDao.findFirst200BySymbolOrderByAddTimeDesc(coinPriceDto.getSymbol());
+            publishHistoricPricesToHZC(key, coinPriceHours);
+            System.out.println("last hour price added to db and weekly cache. Time for " + coinPriceDto.getSymbol() + " :" + now);
         }
     }
 
-    private void saveCoinTo2HourTable(CoinPriceDto coinPrice) {
+    private void saveCoinTo2HourTable(CoinPriceDto coinPriceDto) {
         long now = Instant.now().truncatedTo(ChronoUnit.HOURS).toEpochMilli();
         // get the latest minute record from the map  ???
-        long[] lastPriceTimesForCoin = getOrCreateLastTimes(coinPrice);
+        long[] lastPriceTimesForCoin = getOrCreateLastTimes(coinPriceDto);
         long lastHour = lastPriceTimesForCoin[2];
         if (now >= Instant.ofEpochMilli(lastHour).plus(2, ChronoUnit.HOURS).toEpochMilli()) {
-            CoinPrice2Hour coinPrice2HourEntity = new CoinPrice2Hour(coinPrice.getSymbol());
-            coinPrice2HourEntity.setAskPrice(coinPrice.getAskPrice());
-            coinPrice2HourEntity.setBidPrice(coinPrice.getBidPrice());
-            coinPrice2HourEntity.setLastPrice(coinPrice.getLastPrice());
-            coinPrice2HourEntity.setVolume(coinPrice.getVolume());
-            coinPrice2HourEntity.setTime(now);
-            coinPrice2HourDao.save(coinPrice2HourEntity);
+            coinPrice2HourDao.save((CoinPrice2Hour) createCoinEntity(coinPriceDto, now, "2hour"));
             lastPriceTimesForCoin[2] = now;
             // update cache for the last 4 min time
-            coinLastPriceTimeMap.put(coinPrice.getSymbol(), lastPriceTimesForCoin);
-            System.out.println("last 2 hour price added to db and cache. Time for " + coinPrice.getSymbol() + " :" + now);
+            coinLastPriceTimeMap.put(coinPriceDto.getSymbol(), lastPriceTimesForCoin);
+            String key = coinPriceDto.getSymbol() + "_monthly";
+            List<CoinPriceBase> coinPrice2Hours = coinPrice2HourDao.findFirst360BySymbolOrderByAddTimeDesc(coinPriceDto.getSymbol());
+            publishHistoricPricesToHZC(key, coinPrice2Hours);
+            System.out.println("last 2 hour price added to db and monthly cache. Time for " + coinPriceDto.getSymbol() + " :" + now);
         }
     }
 
-    private void saveCoinToDayTable(CoinPriceDto coinPrice) {
+    private void saveCoinToDayTable(CoinPriceDto coinPriceDto) {
         long now = Instant.now().truncatedTo(ChronoUnit.DAYS).toEpochMilli();
         // get the latest minute record from the map  ???
-        long[] lastPriceTimesForCoin = getOrCreateLastTimes(coinPrice);
+        long[] lastPriceTimesForCoin = getOrCreateLastTimes(coinPriceDto);
         long lastHour = lastPriceTimesForCoin[3];
         if (now >= Instant.ofEpochMilli(lastHour).plus(1, ChronoUnit.DAYS).toEpochMilli()) {
-            CoinPriceDay coinPriceDayEntity = new CoinPriceDay(coinPrice.getSymbol());
-            coinPriceDayEntity.setAskPrice(coinPrice.getAskPrice());
-            coinPriceDayEntity.setBidPrice(coinPrice.getBidPrice());
-            coinPriceDayEntity.setLastPrice(coinPrice.getLastPrice());
-            coinPriceDayEntity.setVolume(coinPrice.getVolume());
-            coinPriceDayEntity.setTime(now);
-            coinPriceDayDao.save(coinPriceDayEntity);
+            coinPriceDayDao.save((CoinPriceDay) createCoinEntity(coinPriceDto, now, "day"));
             lastPriceTimesForCoin[3] = now;
             // update cache for the last 4 min time
-            coinLastPriceTimeMap.put(coinPrice.getSymbol(), lastPriceTimesForCoin);
-            System.out.println("last 1 day price added to db and cache. Time for " + coinPrice.getSymbol() + " :" + now);
+            coinLastPriceTimeMap.put(coinPriceDto.getSymbol(), lastPriceTimesForCoin);
+            String key = coinPriceDto.getSymbol() + "_yearly";
+            List<CoinPriceBase> coinPriceDays = coinPriceDayDao.findFirst360BySymbolOrderByAddTimeDesc(coinPriceDto.getSymbol());
+            publishHistoricPricesToHZC(key, coinPriceDays);
+            System.out.println("last 1 day price added to db and yearly cache. Time for " + coinPriceDto.getSymbol() + " :" + now);
         }
     }
 
-    private void saveCoin(JsonNode coin) {
-        String symbolUSDC = coin.get("symbol").asText();
+    private void saveCoin(JsonNode jsonCoin) {
+        String symbolUSDC = jsonCoin.get("symbol").asText();
         if (coinSymbolSet.contains(symbolUSDC)) {
             String symbol = symbolUSDC.substring(0, symbolUSDC.length() - 4);
             // cnstruct map
-            final CoinPriceDto coinPrice = createCoinDto(coin, symbol);
+            final CoinPriceDto coinPrice = createCoinDto(jsonCoin, symbol);
             coinPriceMap.put(coinPrice.getSymbol(), coinPrice);
             //save into db
             saveCoinToDB(coinPrice);

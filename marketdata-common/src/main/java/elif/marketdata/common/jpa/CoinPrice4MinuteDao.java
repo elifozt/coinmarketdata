@@ -9,8 +9,8 @@ import java.util.List;
 @Transactional
 public interface CoinPrice4MinuteDao extends CrudRepository<CoinPrice4Minute, Long>, JpaSpecificationExecutor {
 
-    // Get daily prices
-    List<CoinPrice4Minute> findFirst360BySymbolOrderByAddTimeDesc(String symbol);
+    // Get daily prices   -- SORR
+    List<CoinPriceBase> findFirst360BySymbolOrderByAddTimeDesc(String symbol);
 
 
     CoinPrice4Minute findFirst1BySymbolOrderByAddTimeDesc(String symbol);
