@@ -43,7 +43,11 @@ public class MarketDataController {
         List<CoinPriceDto> coinPriceDtos = marketDataService.getPrice(symbol);
         return ResponseEntity.ok(coinPriceDtos);
     }
-
+    @GetMapping(value = "/priceDaily/{symbol}")
+    public ResponseEntity<List<CoinPriceDto>> getCoinPriceDaily (@PathVariable String symbol) {
+        List<CoinPriceDto> coinPriceDtos = marketDataService.getCoinPriceDaily(symbol);
+        return ResponseEntity.ok(coinPriceDtos);
+    }
     @GetMapping(value = "/prices")
     public ResponseEntity<List<CoinPriceDto>> getCoinPrices() {
         return new ResponseEntity(marketDataService.getLastPrices(), HttpStatus.OK);

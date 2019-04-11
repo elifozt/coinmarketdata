@@ -8,21 +8,19 @@ import elif.marketdata.api.websocket.WebSocketHandler;
 import elif.marketdata.common.CoinPriceDto;
 import elif.marketdata.common.CoinPriceSet;
 import elif.marketdata.common.HazelcastClientService;
-import elif.marketdata.common.jpa.CoinPrice;
-import elif.marketdata.common.jpa.CoinPriceDao;
+import elif.marketdata.common.jpa.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
-
 import javax.annotation.PostConstruct;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -33,7 +31,11 @@ public class MarketDataService implements MessageListener<String> {
     @Autowired
     CoinPriceDao coinPriceDao;
     @Autowired
+    CoinPrice4MinuteDao coinPrice4MinuteDao;
+    @Autowired
     WebSocketHandler webSocketHandler;
+    @Autowired
+    CoinChartDataService cds;
 
     private static final Logger log = LoggerFactory.getLogger(MarketDataApplication.class);
 
@@ -55,7 +57,6 @@ public class MarketDataService implements MessageListener<String> {
         String cpsString = m.getMessageObject();
         // new coinPrice is received
         CoinPriceSet cps = null;
-
         try {
             // read json string into CoinPriceSet object
             cps = mapper.readValue(cpsString, CoinPriceSet.class);
@@ -73,23 +74,31 @@ public class MarketDataService implements MessageListener<String> {
 
     // Get all prices of a symbol
     public List<CoinPriceDto> getPrice(String coinSymbol) {
-        List<CoinPrice> coinPricePage = coinPriceDao.findFirst300BySymbolOrderByAddTimeDesc(coinSymbol);
-        log.info("TRYING to get prices for " + coinSymbol + ":" + coinPricePage);
-        List<CoinPriceDto> coinPriceDtoList = coinPricePage
-                .stream()
-                .map(coinPrice -> toCoinPriceDto(coinPrice))
-                .collect(Collectors.toList());
-        return coinPriceDtoList;
+        final List<CoinPrice> coinPriceList = coinPriceDao.findFirst300BySymbolOrderByAddTimeDesc(coinSymbol);
+//        log.info("TRYING to get prices for " + coinSymbol + ":" + coinPriceList);
+        return coinPriceList.stream().map(this::toCoinPriceDto).collect(Collectors.toList());
     }
 
     // Get last prices of marketdate
-    public Collection<CoinPriceDto> getLastPrices() {
-        log.info("TRYING get last prices from mao" + coinPriceMap);
+    public List<CoinPriceDto> getLastPrices() {
+//        log.info("TRYING get last prices from mao" + coinPriceMap);   // ???
         final List<CoinPrice> coinPriceList = coinPriceDao.findLastPrices();
-        return coinPriceList.stream().map(coinPrice -> toCoinPriceDto(coinPrice)).collect(Collectors.toList());
+        return coinPriceList.stream().map(this::toCoinPriceDto).collect(Collectors.toList());
     }
 
-    private CoinPriceDto toCoinPriceDto(CoinPrice c) {
+    // Get daily prices prices of a symbol
+    public List<CoinPriceDto> getCoinPriceDaily(String coinSymbol) {
+        List<CoinPriceDto> coinPriceDaily = cds.getCoinPriceDaily(coinSymbol);
+        if (coinPriceDaily == null) {
+            log.info("Getting daily prices from db for " + coinSymbol);
+            List<CoinPrice4Minute> list = coinPrice4MinuteDao.findFirst360BySymbolOrderByAddTimeDesc(coinSymbol);
+            return list.stream().map(this::toCoinPriceDto).collect(Collectors.toList());
+        } else
+            return coinPriceDaily;
+
+    }
+
+    private CoinPriceDto toCoinPriceDto(CoinPriceBase c) {
         CoinPriceDto d = new CoinPriceDto(c.getSymbol());
         d.setAskPrice(c.getAskPrice());
         d.setBidPrice(c.getBidPrice());

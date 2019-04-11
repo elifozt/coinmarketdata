@@ -61,7 +61,7 @@ public class WebSocketHandler extends TextWebSocketHandler implements Runnable {
     }
 
     public void sendToEveryone(String jsonString) {
-        System.out.println(sessions.size() + " SENDING TO EVERONE " + jsonString);
+//        System.out.println(sessions.size() + " SENDING TO EVERONE " + jsonString);
         for (WebSocketSession session : sessions) {
             try {
                 session.sendMessage(new TextMessage(jsonString));

@@ -1,5 +1,7 @@
 package elif.marketdata.common;
 
+import elif.marketdata.common.jpa.CoinPriceBase;
+
 import java.math.BigDecimal;
 import java.util.Objects;
 
@@ -9,9 +11,19 @@ public class CoinPriceDto {
     private BigDecimal bidPrice;
     private BigDecimal lastPrice;
     private BigDecimal volume;
+    private long time;
     private long addTime;
 
     protected CoinPriceDto() {
+    }
+
+    public CoinPriceDto(CoinPriceBase cpb) {
+        this.symbol = cpb.getSymbol();
+        this.askPrice = cpb.getAskPrice();
+        this.bidPrice = cpb.getBidPrice();
+        this.lastPrice = cpb.getLastPrice();
+        this.volume = cpb.getVolume();
+        this.addTime = cpb.getAddTime();
     }
 
     public CoinPriceDto(String symbol) {
@@ -64,6 +76,14 @@ public class CoinPriceDto {
 
     public void setAddTime(long addTime) {
         this.addTime = addTime;
+    }
+
+    public long getTime() {
+        return time;
+    }
+
+    public void setTime(long time) {
+        this.time = time;
     }
 
     @Override

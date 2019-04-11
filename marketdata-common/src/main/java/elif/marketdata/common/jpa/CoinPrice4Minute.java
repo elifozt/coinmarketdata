@@ -3,8 +3,8 @@ package elif.marketdata.common.jpa;
 import javax.persistence.*;
 
 @Entity
-@Table(name = "coin_price")
-public class CoinPrice extends CoinPriceBase {
+@Table(name = "coin_price_minute")
+public class CoinPrice4Minute extends CoinPriceBase {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     long id;
@@ -17,10 +17,10 @@ public class CoinPrice extends CoinPriceBase {
         this.id = id;
     }
 
-    public CoinPrice() {
+    public CoinPrice4Minute() {
     }
 
-    public CoinPrice(String symbol) {
+    public CoinPrice4Minute(String symbol) {
         super(symbol);
     }
 
