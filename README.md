@@ -1,3 +1,5 @@
+Please see the running applcation by visiting : http://www.elifozturk.me/
+
 # coinmarketdata
 This is a simple cryptocurrency market data application. It shows the current USD prices for popular coins such as Bitcoin, Ethereum and Litecoin.
 There are 3 modules.
