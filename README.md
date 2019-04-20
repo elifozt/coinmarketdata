@@ -37,3 +37,4 @@ Screenshots
  
 ![CoinMarket Data](https://raw.githubusercontent.com/elifozt/coinmarketdata-angular/master/src/assets/img/coinprices.png)
 ![BTC Last Hour Price Chart](https://raw.githubusercontent.com/elifozt/coinmarketdata-angular/master/src/assets/img/BTCChart.png)
+![System Design](https://raw.githubusercontent.com/elifozt/coinmarketdata-angular/master/src/assets/img/marketdatadesign.png)
