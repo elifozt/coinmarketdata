@@ -53,6 +53,7 @@ public class PriceFetcher {
         coinPriceDto.setBidPrice(new BigDecimal(jsonCoin.get("bidPrice").asText()));
         coinPriceDto.setLastPrice(new BigDecimal(jsonCoin.get("lastPrice").asText()));
         coinPriceDto.setVolume(new BigDecimal(jsonCoin.get("volume").asText()));
+        coinPriceDto.setAddTime(Instant.now().toEpochMilli());
         return coinPriceDto;
     }
 

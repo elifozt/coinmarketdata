@@ -1,4 +1,4 @@
-package elif.marketdata.api.elif.marketdata.service;
+package elif.marketdata.api.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;

@@ -1,12 +1,10 @@
 package elif.marketdata.api.controller;
 
-import elif.marketdata.api.elif.marketdata.service.CoinChartDataService;
-import elif.marketdata.api.elif.marketdata.service.MarketDataService;
+import elif.marketdata.api.service.CoinChartDataService;
+import elif.marketdata.api.service.MarketDataService;
 import elif.marketdata.common.CoinPriceDto;
+import elif.marketdata.common.dto.ContactData;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -43,7 +41,17 @@ public class MarketDataController {
 
     @GetMapping(value = "/prices")
     public ResponseEntity<List<CoinPriceDto>> getCoinPrices() {
-        return new ResponseEntity(marketDataService.getLastPrices(), HttpStatus.OK);
+        return ResponseEntity.ok(marketDataService.getLastPrices());
+    }
+
+    @GetMapping(value = "/segmentdata/{segmentId}")
+    public ResponseEntity<List<ContactData>> getSegmentData(@PathVariable String segmentId) {
+        return ResponseEntity.ok(marketDataService.getSegmentData(segmentId));
+    }
+
+    @GetMapping(value = "/segments")
+    public ResponseEntity<List<String>> getSegments() {
+        return ResponseEntity.ok(marketDataService.getSegments());
     }
 
     @GetMapping(value = "/prices/{symbol}")
@@ -55,6 +63,7 @@ public class MarketDataController {
     @GetMapping(value = "/priceLive/{symbol}")
     public ResponseEntity<List<CoinPriceDto>> getCoinPriceLive(@PathVariable String symbol) {
         List<CoinPriceDto> coinPriceDtos = marketDataService.getCoinPriceLive(symbol);
+        System.out.println(coinPriceDtos);
         return ResponseEntity.ok(coinPriceDtos);
     }
 

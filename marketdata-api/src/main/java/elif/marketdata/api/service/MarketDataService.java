@@ -1,4 +1,4 @@
-package elif.marketdata.api.elif.marketdata.service;
+package elif.marketdata.api.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hazelcast.core.Message;
@@ -8,20 +8,18 @@ import elif.marketdata.api.websocket.WebSocketHandler;
 import elif.marketdata.common.CoinPriceDto;
 import elif.marketdata.common.CoinPriceSet;
 import elif.marketdata.common.HazelcastClientService;
+import elif.marketdata.common.dto.ContactData;
 import elif.marketdata.common.jpa.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.ResponseStatus;
 
 import javax.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -31,11 +29,14 @@ public class MarketDataService implements MessageListener<String> {
     HazelcastClientService hc;
     @Autowired
     CoinPriceDao coinPriceDao;
-
     @Autowired
     WebSocketHandler webSocketHandler;
     @Autowired
     CoinChartDataService cds;
+    @Value("${x.y}")
+    private String xy;
+    @Value("${a.b}")
+    private String ab;
 
     private static final Logger log = LoggerFactory.getLogger(MarketDataApplication.class);
 
@@ -65,7 +66,7 @@ public class MarketDataService implements MessageListener<String> {
             cps.getCoinPrices().forEach(coinPrice -> {
                 // put the prices on local cache - map
                 lastPriceMap.put(coinPrice.getSymbol(), coinPrice);
-
+                coinPrice.setAddTime(System.currentTimeMillis());
                 addToLivePriceMap(coinPrice);
             });
             final String arrayStr = mapper.writer().writeValueAsString(cps.getCoinPrices());
@@ -77,19 +78,18 @@ public class MarketDataService implements MessageListener<String> {
     }
 
     private void addToLivePriceMap(CoinPriceDto coinPrice) {
-        List<CoinPriceDto> coinLiveList = livePriceMap.get(coinPrice.getSymbol());
-        if (coinLiveList == null) {
-            coinLiveList = new ArrayList<>();
-        }
+        List<CoinPriceDto> coinLiveList = livePriceMap.computeIfAbsent(coinPrice.getSymbol(), k -> new ArrayList<>());
         if (coinLiveList.size() >= 360) {
             coinLiveList.remove(0);
         }
         coinLiveList.add(coinPrice);
         log.info("price added to live prices of :" + coinPrice.getSymbol());
     }
+
     public List<CoinPriceDto> getCoinPriceLive(String symbol) {
         return livePriceMap.get(symbol);
     }
+
     // Get all prices of a symbol
     public List<CoinPriceDto> getPrice(String coinSymbol) {
         final List<CoinPrice> coinPriceList = coinPriceDao.findFirst300BySymbolOrderByAddTimeDesc(coinSymbol);
@@ -104,6 +104,20 @@ public class MarketDataService implements MessageListener<String> {
         return coinPriceList.stream().map(CoinPriceDto::toCoinPriceDto).collect(Collectors.toList());
     }
 
+    public List<ContactData> getSegmentData(String segmentId) {
+        List<ContactData> result = new ArrayList<>(10);
+        for (int i = 0; i < 10; i++) {
+            result.add(new ContactData(i + "address@gmail.com"));
+        }
+        return result;
+    }
+
+    public List<String> getSegments() {
+        List<String> result = new ArrayList<>(2);
+        result.add(xy);
+        result.add(ab);
+        return result;
+    }
 //    private CoinPriceDto toCoinPriceDto(CoinPriceBase c) {
 //        CoinPriceDto d = new CoinPriceDto(c.getSymbol());
 //        d.setAskPrice(c.getAskPrice());
